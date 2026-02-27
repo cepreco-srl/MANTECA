@@ -153,12 +153,7 @@
   <div class="divider"><div class="div-line"></div><div class="div-rhombus"></div><div class="div-line r"></div></div>
 
   <p class="date-heading">Domingo 8 de Marzo, 2026</p>
-  <p class="date-sub">Dos momentos para celebrar</p>
 
-  <div class="turnos">
-    <div class="turno"><span class="turno-time">10:00</span><span class="turno-name">Primer turno</span></div>
-    <div class="turno"><span class="turno-time">16:00</span><span class="turno-name">Segundo turno</span></div>
-  </div>
 
   <div class="address">
     <p class="address-main">Soldado de la Independencia 1486</p>
@@ -174,17 +169,7 @@
       <div class="fg"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Tu nombre" /></div>
       <div class="fg"><label>Apellido</label><input type="text" id="f-apellido" placeholder="Tu apellido" /></div>
     </div>
-    <div class="form-row">
-      <div class="fg">
-        <label>Turno</label>
-        <select id="f-turno">
-          <option value="">Elegí un turno</option>
-          <option value="10:00hs">10:00hs — Primer turno</option>
-          <option value="16:00hs">16:00hs — Segundo turno</option>
-        </select>
-      </div>
-      <div class="fg"><label>Cantidad de personas</label><input type="number" id="f-personas" placeholder="1" min="1" max="20" /></div>
-    </div>
+    <div class="fg"><label>Cantidad de personas</label><input type="number" id="f-personas" placeholder="1" min="1" max="20" /></div>
     <button class="btn-rsvp" id="btn-submit" onclick="confirmar()">Confirmar Asistencia</button>
     <div class="msg" id="form-msg"></div>
   </div>
@@ -243,15 +228,13 @@
       <p class="adm-sub">Domingo 8 de Marzo · Belgrano</p>
     </div>
 
-    <div class="stats">
-      <div class="stat"><span class="stat-n" id="s-tot">–</span><span class="stat-l">Total personas</span></div>
-      <div class="stat"><span class="stat-n" id="s-10">–</span><span class="stat-l">Turno 10:00hs</span></div>
-      <div class="stat"><span class="stat-n" id="s-16">–</span><span class="stat-l">Turno 16:00hs</span></div>
+    <div class="stats" style="grid-template-columns:1fr;">
+      <div class="stat"><span class="stat-n" id="s-tot">–</span><span class="stat-l">Total personas confirmadas</span></div>
     </div>
 
     <div class="tbl-wrap">
-      <div class="tbl-head">
-        <span>Nombre</span><span>Apellido</span><span>Turno</span><span>Personas</span><span>Confirmado</span>
+      <div class="tbl-head" style="grid-template-columns:2fr 2fr 1fr 2fr;">
+        <span>Nombre</span><span>Apellido</span><span>Personas</span><span>Confirmado</span>
       </div>
       <div id="guest-list"><div class="empty">Cargando...</div></div>
     </div>
@@ -288,13 +271,12 @@
   window.confirmar = async function() {
     const nombre   = document.getElementById("f-nombre").value.trim();
     const apellido = document.getElementById("f-apellido").value.trim();
-    const turno    = document.getElementById("f-turno").value;
     const personas = parseInt(document.getElementById("f-personas").value);
     const msg = document.getElementById("form-msg");
     const btn = document.getElementById("btn-submit");
     msg.className = "msg";
 
-    if (!nombre || !apellido || !turno || !personas || personas < 1) {
+    if (!nombre || !apellido || !personas || personas < 1) {
       msg.textContent = "Por favor completá todos los campos.";
       msg.className = "msg error"; return;
     }
@@ -312,13 +294,13 @@
       });
 
       if (dup) {
-        msg.textContent = nombre + " " + apellido + " ya confirmó asistencia (turno " + dup.data().turno + ").";
+        msg.textContent = nombre + " " + apellido + " ya confirmó asistencia.";
         msg.className = "msg error";
         btn.disabled = false; btn.textContent = "Confirmar Asistencia"; return;
       }
 
       await addDoc(collection(db, COL), {
-        nombre, apellido, turno, personas,
+        nombre, apellido, personas,
         ts: new Date().toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }),
         createdAt: new Date()
       });
@@ -327,7 +309,7 @@
         <div style="padding:40px 0; text-align:center;">
           <div style="font-family:'Playfair Display',serif; font-size:40px; color:var(--brand); margin-bottom:12px;">✦</div>
           <p style="font-family:'Playfair Display',serif; font-size:24px; font-style:italic; color:var(--text); margin-bottom:10px;">¡Nos vemos el 8 de Marzo!</p>
-          <p style="font-size:11px; letter-spacing:2px; color:var(--text-light);">${nombre} ${apellido} · ${personas} ${personas===1?"persona":"personas"} · ${turno}</p>
+          <p style="font-size:11px; letter-spacing:2px; color:var(--text-light);">${nombre} ${apellido} · ${personas} ${personas===1?"persona":"personas"}</p>
         </div>`;
 
     } catch(e) {
@@ -364,20 +346,16 @@
       const guests = snap.docs.map(d => d.data());
       const ids    = snap.docs.map(d => d.id);
 
-      const t10  = guests.filter(g => g.turno === "10:00hs").reduce((s,g) => s + g.personas, 0);
-      const t16  = guests.filter(g => g.turno === "16:00hs").reduce((s,g) => s + g.personas, 0);
-      document.getElementById("s-tot").textContent = t10 + t16;
-      document.getElementById("s-10").textContent  = t10;
-      document.getElementById("s-16").textContent  = t16;
+      const total = guests.reduce((s,g) => s + g.personas, 0);
+      document.getElementById("s-tot").textContent = total;
 
       const list = document.getElementById("guest-list");
       if (!guests.length) { list.innerHTML = "<div class=\"empty\">Aún no hay confirmaciones</div>"; return; }
 
-      list.innerHTML = guests.map((g, i) => `
-        <div class="tbl-row">
+      list.innerHTML = guests.map((g) => `
+        <div class="tbl-row" style="grid-template-columns:2fr 2fr 1fr 2fr;">
           <span>${g.nombre}</span>
           <span>${g.apellido}</span>
-          <span><span class="turno-tag">${g.turno}</span></span>
           <span class="pnum">${g.personas}</span>
           <span class="ts">${g.ts}</span>
         </div>`).join("");
